@@ -8,32 +8,39 @@ canvas.width = canvas.height = 600;
 var context = canvas.getContext('2d');
 context.font = '1em Consolas';
 
-
-var vx = 0;
-var vy = 0;
-var force = 0.8;
-var friction = 0.97;
+// Game-changing variables
+var goalResetTime = 5; // seconds
 var maxSpeed = 5;
+var force = 2;
+var friction = 0.97;
+var minGoalDist = 300;
+var wallBounce = -0.7; // -1 preserves all velocity
 
+// Player variables
 var playerColor = getRandomColor();
 var name = '';
 var score = 0;
 var playerSize = 13;
 var px = 100,
 	py = 100;
+var vx = 0,
+	vy = 0;
 
+// Goal variables
 var goalColor = '#FFDF00';
 var goalOutlineColor = '#D4AF37';
 var goalSize = 20;
-var minGoalDist = 300;
 var margin = 20;
 var gPos = getGoalPosition();
 var gx = gPos[0],
 	gy = gPos[1];
 
+// Data variables
 var keys = [];
-var lastCalledTime;
+var lastTime = 0,
+	currentTime = 0;
 var fps;
+var frame = 0;
 
 
 //
@@ -54,7 +61,7 @@ document.getElementById('username').onkeypress = function (e) {
 	if (!e) e = window.event;
 	var keyCode = e.keyCode || e.which;
 	if (keyCode == '13')
-		nameEnter()
+		nameEnter();
 }
 
 
@@ -73,7 +80,12 @@ gameLoop();
 function gameLoop() {
 	requestAnimationFrame(gameLoop);
 	checkCollisions();
-	movePlayer(); // updates player position 
+
+	if (name) {
+		frame += 1;
+		shrinkGoal();
+		movePlayer(); // updates player position 
+	}
 
 	clearCanvas(); // removes old frame
 
@@ -89,9 +101,28 @@ function gameLoop() {
 function checkCollisions() {
 	if (distance(gx, gy, px, py) < (goalSize + playerSize)) {
 		score += 1;
-		gPos = getGoalPosition();
-		gx = gPos[0], gy = gPos[1];
+		resetGoal();
 	}
+}
+
+
+//
+// Shrinks the goal over 5 seconds, then resets it if nobody gets it
+//
+function shrinkGoal() {
+
+	if (frame < 2) lastTime = performance.now();
+	currentTime = performance.now();
+	deltaTime = currentTime - lastTime;
+	//console.log(.0001 * deltaTime.toFixed());
+	lastTime = currentTime;
+	if (goalSize > 0)
+		goalSize -= goalResetTime * .001 * deltaTime.toFixed();
+	else
+		resetGoal();
+
+
+
 }
 
 
@@ -108,19 +139,19 @@ function movePlayer() {
 	// If player touching right or left wall
 	if (px > (canvas.width - playerSize)) {
 		px = canvas.width - playerSize;
-		vx *= -1;
+		vx *= wallBounce;
 	} else if (px < (0 + playerSize)) {
 		px = playerSize;
-		vx *= -1;
+		vx *= wallBounce;
 	}
 
 	// If player touching bottom or top wall
 	if (py > (canvas.height - playerSize)) {
 		py = canvas.height - playerSize;
-		vy *= -1;
+		vy *= wallBounce;
 	} else if (py < (0 + playerSize)) {
 		py = playerSize;
-		vy *= -1;
+		vy *= wallBounce;
 	}
 
 	// Change position
@@ -218,26 +249,27 @@ function keysPressed(e) {
 		// ←
 		if (keys[37] || keys[65]) {
 			if (vx > -maxSpeed)
-				left = true;
-		} else left = false;
+				vx -= 1;
+		}
 
 		// ↑
 		if (keys[38] || keys[87]) {
 			if (vy > -maxSpeed)
-				up = true;
-		} else up = false;
+				vy -= 1;
+		}
 
 		// →
 		if (keys[39] || keys[68]) {
 			if (vx < maxSpeed)
-				right = true;
-		} else right = false;
+				vx += 1;
+
+		}
 
 		// ↓
 		if (keys[40] || keys[83]) {
 			if (vy < maxSpeed)
-				down = true;
-		} else down = false;
+				vy += 1;
+		}
 	}
 }
 
@@ -264,10 +296,6 @@ function getRandomColor() {
 }
 
 
-function boost() {
-
-}
-
 //
 // Set new goal position, min of 200 away from player
 //
@@ -276,11 +304,20 @@ function getGoalPosition() {
 		x = (Math.random() * (canvas.width - (2 * margin))) + margin;
 		y = (Math.random() * (canvas.height - (2 * margin))) + margin;
 		dist = distance(x, y, px, py);
-		console.log("distance: " + dist);
 	} while (dist < minGoalDist);
 
 	return [x, y];
 }
+
+//
+// Resets the goal position and size
+//
+function resetGoal() {
+	goalSize = 20;
+	gPos = getGoalPosition();
+	gx = gPos[0], gy = gPos[1];
+}
+
 
 //
 // Calculate distance between to points, (x1, y1) and (x2, y2)
