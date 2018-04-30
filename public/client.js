@@ -73,15 +73,13 @@ window.addEventListener("keyup", keysReleased, false);
 gameLoop();
 
 //
-// Main game loop where functions are called, forcing 60 fps
+// Main game loop where functions are called
 //
 function gameLoop() {
 	requestAnimationFrame(gameLoop);
 
 	if (name) {
 		frame += 1;
-		checkCollisions();
-		//shrinkGoal();
 		movePlayer(); // updates player values 
 		// Send player data to server
 		socket.emit('playerData', {
@@ -177,31 +175,6 @@ function drawGoal(goalData) {
 	context.lineWidth = 2;
 	context.stroke();
 }
-
-
-//
-// Draws the player at it's updated position
-// FIXME: maybe dont need this function?
-//
-function drawPlayer() {
-	// Center colored part
-	context.beginPath();
-	context.arc(px, py, playerSize, 0, 2 * Math.PI);
-	context.fillStyle = playerColor;
-	context.fill();
-
-	// Black outline
-	context.beginPath();
-	context.arc(px, py, playerSize, 0, 2 * Math.PI);
-	context.strokeStyle = "#000";
-	context.lineWidth = 2;
-	context.stroke();
-
-	// Player name
-	context.fillStyle = "#000"
-	context.fillText(name, px - 20, py - 20);
-}
-
 
 function drawAllPlayers(playerData) {
 	for (var i = 0; i < playerData.length - 1; i++) {
