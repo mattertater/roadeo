@@ -81,9 +81,9 @@ function gameLoop() {
 	if (name) {
 		frame += 1;
 		checkCollisions();
-		shrinkGoal();
-		movePlayer(); // updates player position 
-		// Send data to server
+		//shrinkGoal();
+		movePlayer(); // updates player values 
+		// Send player data to server
 		socket.emit('playerData', {
 			x: px,
 			y: py,
@@ -97,8 +97,6 @@ function gameLoop() {
 	socket.on("goalData", drawGoal);
 	socket.on("allPlayerData", drawAllPlayers);
 	clearCanvas(); // removes old frame
-	drawGoal(); // draws the goal coin
-	drawPlayer(); // draws new position
 	drawStats(); // draws debugging stats
 }
 
@@ -116,9 +114,6 @@ function shrinkGoal() {
 		goalSize -= goalResetTime * .001 * deltaTime.toFixed();
 	else
 		resetGoal();
-
-
-
 }
 
 
@@ -225,7 +220,7 @@ function drawAllPlayers(playerData) {
 
 		// Player name
 		context.fillStyle = "#000"
-		context.fillText(playerData[i].name playerData[i].x - 20, playerData[i].y -
+		context.fillText(playerData[i].name, playerData[i].x - 20, playerData[i].y -
 			20);
 	}
 }

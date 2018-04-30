@@ -2,6 +2,7 @@
 var express = require('express');
 var socket = require('socket.io');
 var app = express();
+app.use(express.static('public'));
 var server = app.listen(3000);
 var io = socket(server);
 
@@ -9,10 +10,9 @@ var io = socket(server);
 var allClients = [];
 var players = [];
 
-app.use(express.static('public'));
-//io.sockets.on('connection', newConnection);
-//io.sockets.on('disconnect', removeConnection);
-//io.sockets.on('playerData', updatePlayer);
+io.sockets.on('connection', newConnection);
+io.sockets.on('disconnect', removeConnection);
+
 
 // Used to not draw goal close to edges
 var margin = 20;
@@ -49,6 +49,8 @@ var gx = gPos[0],
 function newConnection(socket) {
 	console.log("New Connection: " + socket.id);
 	allClients.push(socket.id);
+	io.sockets.on('playerData', updatePlayer);
+
 }
 
 
@@ -56,6 +58,7 @@ function newConnection(socket) {
 // Removes entries from both client and player data arrays
 //
 function removeConnection(socket) {
+	console.log("Removing Connection: " + socket.id);
 	// remove from client array 
 	var i = allClients.indexOf(socket.id);
 	allClients.splice(i, 1);
@@ -70,6 +73,7 @@ function removeConnection(socket) {
 // Adds info to player array, since its ready after name entry
 //
 function updatePlayer(playerData) {
+	console.log("update player");
 	// If player doesn't exist in the player array, add it
 	if (!players[playerData.name]) {
 		players.push(new Player(playerData.name, playerData.color, playerData.score,
@@ -118,21 +122,25 @@ function resetGoal() {
 // Set new goal position, min of 200 away from any player
 //
 function getGoalPosition() {
-	var x, y;
-	var good = false;
-	do {
-		for (var i = 0; i < players.length - 1; i++) {
-			x = (Math.random() * (width - (2 * margin))) + margin;
-			y = (Math.random() * (height - (2 * margin))) + margin;
-			dist = distance(x, y, players[i].x, players[i].y);
-			if (dist > minGoalDist)
-				good = true;
-			else
-				good = false;
-		}
-	} while (!good);
+	// If nobody is playing, don't check based on players
+	if (!(players.length)) return [300, 300];
+	else {
+		var x, y;
+		var good = false;
+		do {
+			for (var i = 0; i < players.length - 1; i++) {
+				x = (Math.random() * (width - (2 * margin))) + margin;
+				y = (Math.random() * (height - (2 * margin))) + margin;
+				dist = distance(x, y, players[i].x, players[i].y);
+				if (dist > minGoalDist)
+					good = true;
+				else
+					good = false;
+			}
+		} while (!good);
 
-	return [x, y];
+		return [x, y];
+	}
 }
 
 
