@@ -28,11 +28,11 @@ var width = 600,
 	height = 600;
 
 // Player data
-function Player(id, name, color, score, px, py) {
+function Player(id, name, color, px, py) {
 	this.id = id;
 	this.name = name;
 	this.color = color;
-	this.score = score;
+	this.score = 0;
 	this.x = px;
 	this.y = py;
 }
@@ -71,8 +71,7 @@ function newConnection(socket) {
 			console.log("Removing player: " + players[i].name);
 			players.splice(i, 1);
 		} else {
-			console.log("Emptying player array");
-			players = [];
+			players = []
 		}
 	});
 
@@ -94,7 +93,6 @@ function updatePlayer(playerData) {
 	if (!players[i]) {
 		console.log("Adding new player " + playerData.name);
 		players.push(new Player(playerData.id, playerData.name, playerData.color,
-			playerData.score,
 			playerData.x,
 			playerData.y));
 	} else {
@@ -102,12 +100,10 @@ function updatePlayer(playerData) {
 		// Update player info in players array
 		players[i].x = playerData.x;
 		players[i].y = playerData.y;
-		players[i].score = playerData.score;
 
 		// Collision checking
 		if (distance(gx, gy, players[i].x, players[i].y) < (goalSize + playerSize)) {
 			players[i].score++;
-			console.log(players[i].name + " got a point and now has " + players[i].score);
 			io.emit('allPlayerData', players);
 			resetGoal();
 		}
@@ -148,12 +144,9 @@ function getGoalPosition() {
 				y = (Math.random() * (height - (2 * margin))) + margin;
 				dist = distance(x, y, players[i].x, players[i].y);
 				console.log("Trying x: " + x.toFixed(2) + ",y: " + y.toFixed(2));
-				if (dist > minGoalDist) {
+				if (dist > minGoalDist)
 					good = true;
-					console.log("New goal is at (" + x.toFixed(2) + ", " + y.toFixed(2) +
-						"), " + dist.toFixed(2) +
-						" away from the nearest player");
-				} else
+				else
 					good = false;
 			}
 		} while (!good);

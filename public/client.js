@@ -8,7 +8,7 @@ var context = canvas.getContext('2d');
 context.font = '1em Consolas';
 
 // Setting up sockets
-var socket = io.connect('http://localhost:3000');
+var socket = io.connect(document.location.href);
 socket.on('id', function (data) {
 	playerID = data.id;
 	console.log("playerID: " + playerID);
@@ -22,7 +22,6 @@ socket.on('initialPlayerData', function (players) {
 })
 socket.on('goalData', drawGoal);
 socket.on('allPlayerData', drawAllPlayers);
-socket.on('scoreData', drawScoreboard);
 
 // Game-changing variables
 var goalResetTime = 5; // seconds
@@ -108,7 +107,6 @@ function gameLoop() {
 			y: py,
 			name: name,
 			color: playerColor,
-			score: score,
 		});
 	}
 }
@@ -239,9 +237,9 @@ function drawAllPlayers(playerData) {
 function drawScoreboard(playerData) {
 	var offset = 0;
 	context.fillStyle = "#000";
-	context.fillText("Player", 20, 20);
-	context.fillText("Score", 70, 20);
-
+	context.fillText("Player", 10, 20);
+	context.fillText("Score", 110, 20);
+	context.fillText("------------------", 10, 30);
 
 	// Sorts players by score
 	// FIXME: should really only do this when someone scores
@@ -249,7 +247,7 @@ function drawScoreboard(playerData) {
 	var tempPlayers = playerData;
 	for (var i = 0; i < tempPlayers.length; i++) {
 		for (var j = i + 1; j < tempPlayers.length - 1; j++) {
-			if (templayers[j].score > tempPlayers[i].score) {
+			if (tempPlayers[j].score > tempPlayers[i].score) {
 				var temp = tempPlayers[i];
 				tempPlayers[i] = tempPlayers[j];
 				tempPlayers[j] = temp;
@@ -258,8 +256,8 @@ function drawScoreboard(playerData) {
 	}
 
 	for (var i = 0; i < tempPlayers.length; i++) {
-		context.fillText(tempPlayers[i].name, 20, 50 + offset);
-		context.fillText(tempPlayers[i].score, 70, 50 + offset)
+		context.fillText(tempPlayers[i].name, 10, 50 + offset);
+		context.fillText(tempPlayers[i].score, 110, 50 + offset)
 		offset += 20;
 	}
 }
