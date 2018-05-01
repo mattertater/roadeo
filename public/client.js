@@ -9,6 +9,13 @@ context.font = '1em Consolas';
 
 // Setting up sockets
 var socket = io.connect('http://localhost:3000');
+socket.on('id', function(data) {
+	playerID = data.id;
+	console.log("playerID: " + playerID);
+})
+socket.on('goalData', drawGoal);
+socket.on('allPlayerData', drawAllPlayers);
+socket.on('scoreData', drawScoreboard);
 
 // Game-changing variables
 var goalResetTime = 5; // seconds
@@ -19,7 +26,9 @@ var wallBounce = -0.7; // -1 preserves all velocity
 
 // Player variables
 var playerColor = getRandomColor();
+var playerID;
 var name = '';
+var nameList = [];
 var score = 0;
 var playerSize = 13;
 var px = 100,
@@ -48,6 +57,8 @@ function nameEnter() {
 		alert("Please enter a name");
 	} else if (document.getElementById('username').value.length > 11) {
 		alert("Please enter a name less than 10 characters in length");
+	} else if (nameList.includes(document.getElementById('username').value)) {
+		alert("User with that name already exists");
 	} else {
 		name = document.getElementById('username').value;
 		$('#nameModal').modal('hide');
@@ -76,6 +87,7 @@ gameLoop();
 // Main game loop where functions are called
 //
 function gameLoop() {
+	
 	requestAnimationFrame(gameLoop);
 
 	if (name) {
@@ -83,19 +95,14 @@ function gameLoop() {
 		movePlayer(); // updates player values 
 		// Send player data to server
 		socket.emit('playerData', {
+			id: playerID,
 			x: px,
 			y: py,
 			name: name,
 			color: playerColor,
 			score: score,
 		});
-	}
-
-	// Get data from server
-	socket.on("goalData", drawGoal);
-	socket.on("allPlayerData", drawAllPlayers);
-	clearCanvas(); // removes old frame
-	drawStats(); // draws debugging stats
+	}	
 }
 
 // **MOVE TO SERVER**
@@ -177,44 +184,44 @@ function drawGoal(goalData) {
 }
 
 function drawAllPlayers(playerData) {
-	for (var i = 0; i < playerData.length - 1; i++) {
+	clearCanvas(); // removes old frame
+	console.log(playerData.length);
+	var x, y, color, name;
+	for (var i = 0; i < playerData.length; i++) {
+		
+		x = playerData[i].x;
+		y = playerData[i].y;
+		color = playerData[i].color;
+		name = playerData[i].name;
+		
 		// Center colored part
 		context.beginPath();
-		context.arc(playerData[i].x, playerData[i].y, playerSize, 0, 2 * Math.PI);
-		context.fillStyle = playerColor;
+		context.arc(x, y, playerSize, 0, 2 * Math.PI);
+		context.fillStyle = color;
 		context.fill();
 
 		// Black outline
 		context.beginPath();
-		context.arc(playerData[i].x, playerData[i].y, playerSize, 0, 2 * Math.PI);
+		context.arc(x, y, playerSize, 0, 2 * Math.PI);
 		context.strokeStyle = "#000";
 		context.lineWidth = 2;
 		context.stroke();
 
 		// Player name
-		context.fillStyle = "#000"
-		context.fillText(playerData[i].name, playerData[i].x - 20, playerData[i].y -
-			20);
+		context.fillStyle = "#000";
+		context.fillText(name, x - 20, y-20);
+		
+		if (!nameList.includes(name))
+			nameList.push(name);
 	}
 }
 
 //
-// Draws out helpful information for debugging purposes
-// NEED TO SHOW TOP 5 SCORES IN TOP CORNER OF SCREEN
+// Draws 
 //
-function drawStats() {
-	//context.fillText("fps: " + fps, 10, 15);
-	context.fillText("vx: " + vx.toFixed(2), 10, 30);
-	context.fillText("vy: " + vy.toFixed(2), 10, 45);
-	context.fillText("px: " + px.toFixed(2), 10, 60);
-	context.fillText("py: " + py.toFixed(2), 10, 75);
-	context.fillText("gx: " + gx.toFixed(2), 10, 90);
-	context.fillText("gy: " + gy.toFixed(2), 10, 105);
-	context.fillText("score: " + score, 10, 120);
-}
-
 function drawScoreboard(scoreData) {
-
+	context.fillStyle = "#000";
+	context.fillText("ID: " + playerID, 20, 20);
 }
 
 //

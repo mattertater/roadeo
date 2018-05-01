@@ -10,8 +10,7 @@ var io = socket(server);
 var allClients = [];
 var players = [];
 
-io.sockets.on('connection', newConnection);
-io.sockets.on('disconnect', removeConnection);
+io.on('connection', newConnection);
 
 
 // Used to not draw goal close to edges
@@ -28,7 +27,8 @@ var width = 600,
 	height = 600;
 
 // Player data
-function Player(name, color, score, px, py) {
+function Player(id, name, color, score, px, py) {
+	this.id = id;
 	this.name = name;
 	this.color = color;
 	this.score = score;
@@ -49,42 +49,45 @@ var gx = gPos[0],
 function newConnection(socket) {
 	console.log("New Connection: " + socket.id);
 	allClients.push(socket.id);
-	io.sockets.on('playerData', updatePlayer);
-
+	socket.emit('id', { id: socket.id });
+	
+	socket.on('disconnect', function() {
+		
+		// remove from client array 
+		var i = allClients.indexOf(socket.id);
+		allClients.splice(i, 1);
+		
+		// remove from players array
+//		i = players.map(function (e) {
+//			return e.id;
+//		}).indexOf(socket.id);
+//		console.log("Removing player: " + players[i].name);
+//		players.splice(i, 1);
+	});
+	
+	socket.on('playerData', updatePlayer);
 }
-
-
-//
-// Removes entries from both client and player data arrays
-//
-function removeConnection(socket) {
-	console.log("Removing Connection: " + socket.id);
-	// remove from client array 
-	var i = allClients.indexOf(socket.id);
-	allClients.splice(i, 1);
-
-	// remove from player data array
-
-}
-
 
 //
 // Runs when name is entered, and every update after that
 // Adds info to player array, since its ready after name entry
 //
 function updatePlayer(playerData) {
-	console.log("update player");
-	// If player doesn't exist in the player array, add it
-	if (!players[playerData.name]) {
-		players.push(new Player(playerData.name, playerData.color, playerData.score,
-			playerData.x,
-			playerData.y));
-	}
-
-	// Get index in players array of this player
+	
+	// Get index of player
 	var i = players.map(function (e) {
 		return e.name;
 	}).indexOf(playerData.name);
+	
+	// If player doesn't exist in the player array, add it
+	if (!players[i]) {
+		console.log("Adding new player " + playerData.name);
+		players.push(new Player(playerData.id, playerData.name, playerData.color, playerData.score,
+			playerData.x,
+			playerData.y));
+	} else {
+
+	// Update player info
 	players[i].color = playerData.color;
 	players[i].name = playerData.name;
 	players[i].x = playerData.x;
@@ -97,10 +100,10 @@ function updatePlayer(playerData) {
 		resetGoal();
 	}
 
-
+	}
 	// Send player and goal data back to clients
-	io.broadcast.emit('allPlayerData', players);
-	io.broadcast.emit('goalData', {
+	io.emit('allPlayerData', players);
+	io.emit('goalData', {
 		x: gx,
 		y: gy,
 		size: goalSize,
