@@ -9,9 +9,16 @@ context.font = '1em Consolas';
 
 // Setting up sockets
 var socket = io.connect('http://localhost:3000');
-socket.on('id', function(data) {
+socket.on('id', function (data) {
 	playerID = data.id;
 	console.log("playerID: " + playerID);
+})
+socket.on('initialPlayerData', function (players) {
+	console.log(players.players.length);
+	for (var i = 0; i < players.players.length; i++) {
+		nameList.push(players.players[i].name);
+		console.log("pushed name " + players.players[i].name);
+	}
 })
 socket.on('goalData', drawGoal);
 socket.on('allPlayerData', drawAllPlayers);
@@ -29,7 +36,6 @@ var playerColor = getRandomColor();
 var playerID;
 var name = '';
 var nameList = [];
-var score = 0;
 var playerSize = 13;
 var px = 100,
 	py = 100;
@@ -57,8 +63,10 @@ function nameEnter() {
 		alert("Please enter a name");
 	} else if (document.getElementById('username').value.length > 11) {
 		alert("Please enter a name less than 10 characters in length");
+		name = '';
 	} else if (nameList.includes(document.getElementById('username').value)) {
 		alert("User with that name already exists");
+		name = '';
 	} else {
 		name = document.getElementById('username').value;
 		$('#nameModal').modal('hide');
@@ -87,7 +95,7 @@ gameLoop();
 // Main game loop where functions are called
 //
 function gameLoop() {
-	
+
 	requestAnimationFrame(gameLoop);
 
 	if (name) {
@@ -102,7 +110,7 @@ function gameLoop() {
 			color: playerColor,
 			score: score,
 		});
-	}	
+	}
 }
 
 // **MOVE TO SERVER**
@@ -170,6 +178,7 @@ function clearCanvas() {
 //
 function drawGoal(goalData) {
 	// Center colored part
+
 	context.beginPath();
 	context.arc(goalData.x, goalData.y, goalData.size, 0, 2 * Math.PI);
 	context.fillStyle = goalColor;
@@ -185,15 +194,18 @@ function drawGoal(goalData) {
 
 function drawAllPlayers(playerData) {
 	clearCanvas(); // removes old frame
-	console.log(playerData.length);
-	var x, y, color, name;
+	var x, y, color;
 	for (var i = 0; i < playerData.length; i++) {
-		
+
+		// Temporary variables for readability
 		x = playerData[i].x;
 		y = playerData[i].y;
 		color = playerData[i].color;
-		name = playerData[i].name;
-		
+
+		// If it's not me, make them a little transparent
+		if (name != playerData[i].name)
+			context.globalAlpha = 0.5;
+
 		// Center colored part
 		context.beginPath();
 		context.arc(x, y, playerSize, 0, 2 * Math.PI);
@@ -209,19 +221,47 @@ function drawAllPlayers(playerData) {
 
 		// Player name
 		context.fillStyle = "#000";
-		context.fillText(name, x - 20, y-20);
-		
-		if (!nameList.includes(name))
-			nameList.push(name);
+		context.fillText(playerData[i].name, x - 20, y - 20);
+
+		// Reset opacity
+		context.globalAlpha = 1.0;
+
+		if (!nameList.includes(playerData[i].name))
+			nameList.push(playerData[i].name);
+
+		drawScoreboard(playerData);
 	}
 }
 
 //
 // Draws 
 //
-function drawScoreboard(scoreData) {
+function drawScoreboard(playerData) {
+	var offset = 0;
 	context.fillStyle = "#000";
-	context.fillText("ID: " + playerID, 20, 20);
+	context.fillText("Player", 20, 20);
+	context.fillText("Score", 70, 20);
+
+
+	// Sorts players by score
+	// FIXME: should really only do this when someone scores
+	//				instead of constantly
+	var tempPlayers = playerData;
+	for (var i = 0; i < tempPlayers.length; i++) {
+		for (var j = i + 1; j < tempPlayers.length - 1; j++) {
+			if (templayers[j].score > tempPlayers[i].score) {
+				var temp = tempPlayers[i];
+				tempPlayers[i] = tempPlayers[j];
+				tempPlayers[j] = temp;
+			}
+		}
+	}
+
+	for (var i = 0; i < tempPlayers.length; i++) {
+		context.fillText(tempPlayers[i].name, 20, 50 + offset);
+		context.fillText(tempPlayers[i].score, 70, 50 + offset)
+		offset += 20;
+	}
 }
 
 //

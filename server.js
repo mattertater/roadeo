@@ -9,6 +9,7 @@ var io = socket(server);
 // Current player arrays
 var allClients = [];
 var players = [];
+var scores = [];
 
 io.on('connection', newConnection);
 
@@ -49,22 +50,32 @@ var gx = gPos[0],
 function newConnection(socket) {
 	console.log("New Connection: " + socket.id);
 	allClients.push(socket.id);
-	socket.emit('id', { id: socket.id });
-	
-	socket.on('disconnect', function() {
-		
+	socket.emit('id', {
+		id: socket.id,
+	});
+	socket.emit('initialPlayerData', {
+		players: players,
+	});
+
+	socket.on('disconnect', function () {
+
 		// remove from client array 
 		var i = allClients.indexOf(socket.id);
 		allClients.splice(i, 1);
-		
+
 		// remove from players array
-//		i = players.map(function (e) {
-//			return e.id;
-//		}).indexOf(socket.id);
-//		console.log("Removing player: " + players[i].name);
-//		players.splice(i, 1);
+		i = players.map(function (e) {
+			return e.id;
+		}).indexOf(socket.id);
+		if (i >= 0) {
+			console.log("Removing player: " + players[i].name);
+			players.splice(i, 1);
+		} else {
+			console.log("Emptying player array");
+			players = [];
+		}
 	});
-	
+
 	socket.on('playerData', updatePlayer);
 }
 
@@ -73,32 +84,33 @@ function newConnection(socket) {
 // Adds info to player array, since its ready after name entry
 //
 function updatePlayer(playerData) {
-	
+
 	// Get index of player
 	var i = players.map(function (e) {
 		return e.name;
 	}).indexOf(playerData.name);
-	
+
 	// If player doesn't exist in the player array, add it
 	if (!players[i]) {
 		console.log("Adding new player " + playerData.name);
-		players.push(new Player(playerData.id, playerData.name, playerData.color, playerData.score,
+		players.push(new Player(playerData.id, playerData.name, playerData.color,
+			playerData.score,
 			playerData.x,
 			playerData.y));
 	} else {
 
-	// Update player info
-	players[i].color = playerData.color;
-	players[i].name = playerData.name;
-	players[i].x = playerData.x;
-	players[i].y = playerData.y;
-	players[i].score = playerData.score;
+		// Update player info in players array
+		players[i].x = playerData.x;
+		players[i].y = playerData.y;
+		players[i].score = playerData.score;
 
-	// Collision checking
-	if (distance(gx, gy, players[i].x, players[i].y) < (goalSize + playerSize)) {
-		players[i].score += 1;
-		resetGoal();
-	}
+		// Collision checking
+		if (distance(gx, gy, players[i].x, players[i].y) < (goalSize + playerSize)) {
+			players[i].score++;
+			console.log(players[i].name + " got a point and now has " + players[i].score);
+			io.emit('allPlayerData', players);
+			resetGoal();
+		}
 
 	}
 	// Send player and goal data back to clients
@@ -126,18 +138,22 @@ function resetGoal() {
 //
 function getGoalPosition() {
 	// If nobody is playing, don't check based on players
-	if (!(players.length)) return [300, 300];
+	if (players.length == 0) return [300, 300];
 	else {
 		var x, y;
 		var good = false;
 		do {
-			for (var i = 0; i < players.length - 1; i++) {
+			for (var i = 0; i < players.length; i++) {
 				x = (Math.random() * (width - (2 * margin))) + margin;
 				y = (Math.random() * (height - (2 * margin))) + margin;
 				dist = distance(x, y, players[i].x, players[i].y);
-				if (dist > minGoalDist)
+				console.log("Trying x: " + x.toFixed(2) + ",y: " + y.toFixed(2));
+				if (dist > minGoalDist) {
 					good = true;
-				else
+					console.log("New goal is at (" + x.toFixed(2) + ", " + y.toFixed(2) +
+						"), " + dist.toFixed(2) +
+						" away from the nearest player");
+				} else
 					good = false;
 			}
 		} while (!good);
