@@ -1,0 +1,30 @@
+{
+  "name": "roadeo",
+  "version": "1.0.0",
+  "description": "\u001b[A\u001b[\u001b[B\u001b[C\u001b[C\u001b[C\u001b[D\u001b[D\u001b[DMultiplayer \u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[Donli\u001b[3~\u001b[3\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001bonline multiplayer racing game",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattertater/roadeo.git"
+  },
+  "keywords": [
+    "html5",
+    "canvas",
+    "node"
+  ],
+  "author": "Matt McDade",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mattertater/roadeo/issues"
+  },
+  "homepage": "https://github.com/mattertater/roadeo#readme",
+  "dependencies": {
+    "express": "^4.16.3",
+    "ngrok": "^3.0.1",
+    "socket.io": "^2.1.0"
+  }
+}
