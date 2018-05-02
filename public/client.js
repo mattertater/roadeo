@@ -5,26 +5,30 @@
 var canvas = document.querySelector("#roadeo");
 canvas.width = canvas.height = 600;
 var context = canvas.getContext('2d');
-context.font = '1em Consolas';
+context.font = '1em Helvetica';
 
 // Setting up sockets
 var socket = io.connect(document.location.href);
+
+// Get our ID back from the server
 socket.on('id', function (data) {
 	playerID = data.id;
-	console.log("playerID: " + playerID);
 })
+
+// Get list of names so we know if ours is legal
 socket.on('initialPlayerData', function (players) {
-	console.log(players.players.length);
 	for (var i = 0; i < players.players.length; i++) {
 		nameList.push(players.players[i].name);
-		console.log("pushed name " + players.players[i].name);
 	}
 })
+
 socket.on('goalData', drawGoal);
 socket.on('allPlayerData', drawAllPlayers);
+socket.on('newMessage', function (message) {
+	messages.unshift(message);
+});
 
 // Game-changing variables
-var goalResetTime = 5; // seconds
 var maxSpeed = 5;
 var force = 2;
 var friction = 0.97;
@@ -35,6 +39,7 @@ var playerColor = getRandomColor();
 var playerID;
 var name = '';
 var nameList = [];
+var messages = [];
 var playerSize = 13;
 var px = 100,
 	py = 100;
@@ -69,6 +74,15 @@ function nameEnter() {
 	} else {
 		name = document.getElementById('username').value;
 		$('#nameModal').modal('hide');
+
+		// Send server basic player info when name is set
+		socket.emit('nameEntered', {
+			id: playerID,
+			name: name,
+			color: playerColor,
+			x: px,
+			y: py,
+		})
 	}
 }
 
@@ -81,7 +95,6 @@ document.getElementById('username').onkeypress = function (e) {
 }
 
 
-
 //
 // Listen for key presses/releases
 //
@@ -89,6 +102,7 @@ window.addEventListener("keydown", keysPressed, false);
 window.addEventListener("keyup", keysReleased, false);
 
 gameLoop();
+
 
 //
 // Main game loop where functions are called
@@ -98,33 +112,14 @@ function gameLoop() {
 	requestAnimationFrame(gameLoop);
 
 	if (name) {
-		frame += 1;
 		movePlayer(); // updates player values 
 		// Send player data to server
 		socket.emit('playerData', {
 			id: playerID,
 			x: px,
 			y: py,
-			name: name,
-			color: playerColor,
 		});
 	}
-}
-
-// **MOVE TO SERVER**
-// Shrinks the goal over 5 seconds, then resets it if nobody gets it
-//
-function shrinkGoal() {
-
-	if (frame < 2) lastTime = performance.now();
-	currentTime = performance.now();
-	deltaTime = currentTime - lastTime;
-	//console.log(.0001 * deltaTime.toFixed());
-	lastTime = currentTime;
-	if (goalSize > 0)
-		goalSize -= goalResetTime * .001 * deltaTime.toFixed();
-	else
-		resetGoal();
 }
 
 
@@ -175,8 +170,11 @@ function clearCanvas() {
 // Draws the goal coin, and checks to see if the player is in it
 //
 function drawGoal(goalData) {
-	// Center colored part
 
+	// Reset opacity just in case
+	context.globalOpacity = 1.0;
+
+	// Center colored part
 	context.beginPath();
 	context.arc(goalData.x, goalData.y, goalData.size, 0, 2 * Math.PI);
 	context.fillStyle = goalColor;
@@ -190,6 +188,10 @@ function drawGoal(goalData) {
 	context.stroke();
 }
 
+
+//
+// Draws all players on screen, calls other draw functions
+//
 function drawAllPlayers(playerData) {
 	clearCanvas(); // removes old frame
 	var x, y, color;
@@ -203,6 +205,8 @@ function drawAllPlayers(playerData) {
 		// If it's not me, make them a little transparent
 		if (name != playerData[i].name)
 			context.globalAlpha = 0.5;
+		else
+			context.globalAlpha = 1.0;
 
 		// Center colored part
 		context.beginPath();
@@ -228,48 +232,48 @@ function drawAllPlayers(playerData) {
 			nameList.push(playerData[i].name);
 
 		drawScoreboard(playerData);
+		drawMessages();
 	}
 }
 
+
 //
-// Draws 
+// Draws the player names and scores in the top right
 //
 function drawScoreboard(playerData) {
-	var offset = 0;
+
 	context.fillStyle = "#000";
 	context.fillText("Player", 10, 20);
 	context.fillText("Score", 110, 20);
-	context.fillText("------------------", 10, 30);
+	context.fillText("- - - - - - - - - - - - - - -", 10, 30);
 
-	// Sorts players by score
-	// FIXME: should really only do this when someone scores
-	//				instead of constantly
-	var tempPlayers = playerData;
-	for (var i = 0; i < tempPlayers.length; i++) {
-		for (var j = i + 1; j < tempPlayers.length - 1; j++) {
-			if (tempPlayers[j].score > tempPlayers[i].score) {
-				var temp = tempPlayers[i];
-				tempPlayers[i] = tempPlayers[j];
-				tempPlayers[j] = temp;
-			}
-		}
-	}
+	var offset = 0;
 
-	for (var i = 0; i < tempPlayers.length; i++) {
-		context.fillText(tempPlayers[i].name, 10, 50 + offset);
-		context.fillText(tempPlayers[i].score, 110, 50 + offset)
+	for (var i = 0; i < playerData.length; i++) {
+		context.fillText(playerData[i].name, 10, 50 + offset);
+		context.fillText(playerData[i].score, 110, 50 + offset)
 		offset += 20;
 	}
 }
 
+
 //
-// Resets to the default position and 0 speed
+// Prints out the game updates in the bottom left corner
 //
-function resetPlayer() {
-	vx = 0;
-	vy = 0;
-	py = 100;
-	px = 100;
+function drawMessages() {
+
+	// Reset opacity and position offset
+	context.globalAlpha = 1;
+	var offset = 0;
+
+	// Loop through messages, print with different offsets and opacities
+	for (var i = 0; i < messages.length; i++) {
+		context.globalAlpha = messages[i].opacity;
+		context.fillText(messages[i].message, 10, 580 - offset);
+		offset += 20;
+		context.globalAlpha -= 0.3;
+	}
+	context.globalAlpha = 1;
 }
 
 

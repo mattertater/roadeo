@@ -7,7 +7,7 @@ var server = app.listen(3000);
 var io = socket(server);
 
 // Current player arrays
-var allClients = [];
+var clients = [];
 var players = [];
 var scores = [];
 
@@ -26,6 +26,9 @@ var playerSize = 13;
 // Size of canvas
 var width = 600,
 	height = 600;
+
+var lastTime = 0,
+	currentTime = 0;
 
 // Player data
 function Player(id, name, color, px, py) {
@@ -49,34 +52,57 @@ var gx = gPos[0],
 //
 function newConnection(socket) {
 	console.log("New Connection: " + socket.id);
-	allClients.push(socket.id);
+
+	// New ID listing in clients
+	clients.push(socket.id);
+
+	// Send players id back to them
 	socket.emit('id', {
 		id: socket.id,
 	});
+
+	// Send list of current players to check name conflicts on client side
 	socket.emit('initialPlayerData', {
 		players: players,
 	});
 
 	socket.on('disconnect', function () {
 
-		// remove from client array 
-		var i = allClients.indexOf(socket.id);
-		allClients.splice(i, 1);
+		// Remove from client array 
+		var i = clients.indexOf(socket.id);
+		clients.splice(i, 1);
 
-		// remove from players array
+		// Remove from players array
 		i = players.map(function (e) {
 			return e.id;
 		}).indexOf(socket.id);
 		if (i >= 0) {
 			console.log("Removing player: " + players[i].name);
+			io.emit('newMessage', {
+				message: players[i].name + " has left the game"
+			});
 			players.splice(i, 1);
 		} else {
-			players = []
+			console.log("Got bad index number for player array: " + i);
 		}
 	});
 
+	socket.on('nameEntered', newPlayer);
 	socket.on('playerData', updatePlayer);
 }
+
+//
+// Runs when player enters a name
+// Creates a new player in the players array
+//
+function newPlayer(data) {
+	players.push(new Player(data.id, data.name, data.color, data.x, data.y));
+	console.log("Added " + data.name + " to the players array with ID " + data.id);
+	io.emit('newMessage', {
+		message: data.name + " has joined the game"
+	});
+}
+
 
 //
 // Runs when name is entered, and every update after that
@@ -86,16 +112,11 @@ function updatePlayer(playerData) {
 
 	// Get index of player
 	var i = players.map(function (e) {
-		return e.name;
-	}).indexOf(playerData.name);
+		return e.id;
+	}).indexOf(playerData.id);
 
-	// If player doesn't exist in the player array, add it
-	if (!players[i]) {
-		console.log("Adding new player " + playerData.name);
-		players.push(new Player(playerData.id, playerData.name, playerData.color,
-			playerData.x,
-			playerData.y));
-	} else {
+	// Make sure the index generated is valid
+	if (i >= 0) {
 
 		// Update player info in players array
 		players[i].x = playerData.x;
@@ -104,18 +125,24 @@ function updatePlayer(playerData) {
 		// Collision checking
 		if (distance(gx, gy, players[i].x, players[i].y) < (goalSize + playerSize)) {
 			players[i].score++;
-			io.emit('allPlayerData', players);
+			sortPlayers();
 			resetGoal();
+			console.log(players[i].name + " got a point!");
+
+			// Send new players array to client to update scores
+			io.emit('allPlayerData', players);
 		}
 
+		//shrinkGoal();
+
+		// Send player and goal data back to clients
+		io.emit('allPlayerData', players);
+		io.emit('goalData', {
+			x: gx,
+			y: gy,
+			size: goalSize,
+		});
 	}
-	// Send player and goal data back to clients
-	io.emit('allPlayerData', players);
-	io.emit('goalData', {
-		x: gx,
-		y: gy,
-		size: goalSize,
-	});
 }
 
 
@@ -126,6 +153,20 @@ function resetGoal() {
 	goalSize = 20;
 	gPos = getGoalPosition();
 	gx = gPos[0], gy = gPos[1];
+}
+
+
+//
+// Sorts the player array by score
+//
+function sortPlayers() {
+	players.sort(function (a, b) {
+		var val1 = a.score,
+			val2 = b.score;
+		if (val1 < val2) return 1;
+		if (val1 > val2) return -1;
+		return 0;
+	});
 }
 
 
@@ -143,7 +184,6 @@ function getGoalPosition() {
 				x = (Math.random() * (width - (2 * margin))) + margin;
 				y = (Math.random() * (height - (2 * margin))) + margin;
 				dist = distance(x, y, players[i].x, players[i].y);
-				console.log("Trying x: " + x.toFixed(2) + ",y: " + y.toFixed(2));
 				if (dist > minGoalDist)
 					good = true;
 				else
@@ -155,6 +195,21 @@ function getGoalPosition() {
 	}
 }
 
+
+//
+// Shrinks the goal over 5 seconds, then resets it if nobody gets it
+//
+function shrinkGoal() {
+
+	currentTime = performance.now();
+	deltaTime = currentTime - lastTime;
+	//console.log(.0001 * deltaTime.toFixed());
+	lastTime = currentTime;
+	if (goalSize > 0)
+		goalSize -= goalResetTime * .001 * deltaTime.toFixed();
+	else
+		resetGoal();
+}
 
 //
 // Calculate distance between to points, (x1, y1) and (x2, y2)
