@@ -13,9 +13,6 @@ var scores = [];
 
 io.on('connection', newConnection);
 
-// Variable to not clear the screen every time
-var clearCount = 0;
-
 // Used to not draw goal close to edges
 var margin = 20;
 
@@ -43,10 +40,9 @@ function Player(id, name, color, px, py) {
 }
 
 // Goal data
-var goalSize = 20;
-var gPos = getGoalPosition();
-var gx = gPos[0],
-	gy = gPos[1];
+var gx = 300,
+	gy = 300;
+
 
 //
 // Runs when new player enters the game, before name entry
@@ -68,6 +64,12 @@ function newConnection(socket) {
 		players: players,
 	});
 
+	socket.emit('goalData', {
+		x: gx,
+		y: gy,
+	});
+
+	// Runs when the client disconnects from the server
 	socket.on('disconnect', function () {
 
 		// Remove from client array 
@@ -85,82 +87,68 @@ function newConnection(socket) {
 			});
 			players.splice(i, 1);
 		} else {
-			console.log("Got bad index number for player array: " + i);
+			console.log("Got bad player index of " + i + " on removePlayer");
 		}
 	});
 
-	socket.on('nameEntered', newPlayer);
-	socket.on('playerData', updatePlayer);
-}
 
-//
-// Runs when player enters a name
-// Creates a new player in the players array
-//
-function newPlayer(data) {
-	players.push(new Player(data.id, data.name, data.color, data.x, data.y));
-	console.log("Added " + data.name + " to the players array with ID " + data.id);
-	io.emit('newMessage', {
-		message: data.name + " has joined the game"
+	// Runs when a name is received from the client
+	socket.on('nameEntered', function (data) {
+		players.push(new Player(data.id, data.name, data.color, data.x, data.y));
+		console.log("Added " + data.name + " to the players array with ID " + data.id);
+		io.emit('newMessage', {
+			message: data.name + " has joined the game",
+		});
 	});
-}
 
 
-//
-// Runs when name is entered, and every update after that
-// Adds info to player array, since its ready after name entry
-//
-function updatePlayer(playerData) {
+	// Runs whenever new position is received from the client
+	socket.on('playerData', function (playerData) {
+		// Get index of player
+		var i = players.map(function (e) {
+			return e.id;
+		}).indexOf(playerData.id);
 
-	// Get index of player
-	var i = players.map(function (e) {
-		return e.id;
-	}).indexOf(playerData.id);
+		// Make sure the index generated is valid
+		if (i >= 0) {
+			// Update player info in players array
+			players[i].x = playerData.x;
+			players[i].y = playerData.y;
+		}
+	});
 
-	// Make sure the index generated is valid
-	if (i >= 0) {
 
-		// Update player info in players array
-		players[i].x = playerData.x;
-		players[i].y = playerData.y;
+	// Runs when the player is colliding with the goal
+	socket.on('playerPoint', function (data) {
 
-		// Collision checking
-		if (distance(gx, gy, players[i].x, players[i].y) < (goalSize + playerSize)) {
+		gx = data.x;
+		gy = data.y;
+
+		// Get index of player
+		var i = players.map(function (e) {
+			return e.id;
+		}).indexOf(data.id);
+
+		if (i >= 0) {
 			players[i].score++;
 			sortPlayers();
-			resetGoal();
-			console.log(players[i].name + " got a point!");
-
-			// Send new players array to client to update scores
-			io.emit('allPlayerData', players);
-		}
-
-		//shrinkGoal();
-
-		// Send player and goal data back to clients
-		if (clearCount) {
-			io.emit('clearCanvas');
-			clearCount = 0;
 		} else {
-			clearCount++;
+			console.log("Bad player index of " + i + " while incrementing point");
 		}
+
 		io.emit('goalData', {
 			x: gx,
 			y: gy,
-			size: goalSize,
 		});
-		io.emit('allPlayerData', players);
-	}
-}
+	});
 
 
-//
-// Resets the goal position and size
-//
-function resetGoal() {
-	goalSize = 20;
-	gPos = getGoalPosition();
-	gx = gPos[0], gy = gPos[1];
+	// Runs when the player wants an update of the players array and goal positions
+	socket.on('requestUpdate', function () {
+		socket.emit('updatedPlayers', {
+			players: players,
+		});
+	});
 }
 
 
@@ -175,32 +163,6 @@ function sortPlayers() {
 		if (val1 > val2) return -1;
 		return 0;
 	});
-}
-
-
-// 
-// Set new goal position, min of 200 away from any player
-//
-function getGoalPosition() {
-	// If nobody is playing, don't check based on players
-	if (players.length == 0) return [300, 300];
-	else {
-		var x, y;
-		var good = false;
-		do {
-			for (var i = 0; i < players.length; i++) {
-				x = (Math.random() * (width - (2 * margin))) + margin;
-				y = (Math.random() * (height - (2 * margin))) + margin;
-				dist = distance(x, y, players[i].x, players[i].y);
-				if (dist > minGoalDist)
-					good = true;
-				else
-					good = false;
-			}
-		} while (!good);
-
-		return [x, y];
-	}
 }
 
 

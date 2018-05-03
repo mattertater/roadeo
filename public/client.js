@@ -13,23 +13,30 @@ var socket = io.connect(document.location.href);
 // Get our ID back from the server
 socket.on('id', function (data) {
 	playerID = data.id;
-})
+});
 
 // Get list of names so we know if ours is legal
 socket.on('initialPlayerData', function (players) {
 	for (var i = 0; i < players.players.length; i++) {
 		nameList.push(players.players[i].name);
 	}
-})
-
-socket.on('goalData', drawGoal);
-socket.on('allPlayerData', drawAllPlayers);
-socket.on('newMessage', function (message) {
-	messages.unshift(message);
 });
-socket.on('clearCanvas', function () {
-	clearCanvas();
-})
+
+// When new goal data is received
+socket.on('goalData', function (data) {
+	gx = data.x;
+	gy = data.y;
+});
+
+// When new player data is received
+socket.on('updatedPlayers', function (data) {
+	players = data.players;
+});
+
+// When a new message is received
+socket.on('newMessage', function (data) {
+	messages.unshift(data.message);
+});
 
 // Game-changing variables
 var maxSpeed = 5;
@@ -41,6 +48,7 @@ var wallBounce = -0.7; // -1 preserves all velocity
 var playerColor = getRandomColor();
 var playerID;
 var name = '';
+var players = [];
 var nameList = [];
 var messages = [];
 var playerSize = 13;
@@ -50,9 +58,12 @@ var vx = 0,
 	vy = 0;
 
 // Goal variables
+var gx, gy;
 var goalColor = '#FFDF00';
 var goalOutlineColor = '#D4AF37';
-
+var goalSize = 20;
+var margin = 20;
+var minGoalDist = 200;
 
 // Data variables
 var keys = [];
@@ -85,7 +96,7 @@ function nameEnter() {
 			color: playerColor,
 			x: px,
 			y: py,
-		})
+		});
 	}
 }
 
@@ -113,6 +124,8 @@ gameLoop();
 function gameLoop() {
 
 	requestAnimationFrame(gameLoop);
+	clearCanvas();
+
 
 	if (name) {
 		movePlayer(); // updates player values 
@@ -123,6 +136,14 @@ function gameLoop() {
 			y: py,
 		});
 	}
+
+	checkCollisions();
+	socket.emit('requestUpdate', {});
+
+	drawGoal();
+	drawAllPlayers();
+	drawScoreboard();
+	drawMessages();
 }
 
 
@@ -157,34 +178,43 @@ function movePlayer() {
 	// Change position
 	px += vx;
 	py += vy;
-
 }
 
 
 //
-// Pretty self explanatory
+// Checks to see if the player is colliding with the goal
 //
-function clearCanvas() {
-	context.clearRect(0, 0, canvas.width, canvas.height);
+
+function checkCollisions() {
+	// Collision checking
+	if (distance(gx, gy, px, py) < (goalSize + playerSize)) {
+		// Send new players array to client to update scores
+		resetGoal();
+		socket.emit('playerPoint', {
+			id: playerID,
+			x: gx,
+			y: gy,
+		});
+	}
 }
 
 
 //
 // Draws the goal coin, and checks to see if the player is in it
 //
-function drawGoal(goalData) {
+function drawGoal() {
 	// Reset opacity just in case
 	context.globalOpacity = 1.0;
 
 	// Center colored part
 	context.beginPath();
-	context.arc(goalData.x, goalData.y, goalData.size, 0, 2 * Math.PI);
+	context.arc(gx, gy, goalSize, 0, 2 * Math.PI);
 	context.fillStyle = goalColor;
 	context.fill();
 
 	// Slightly off-color outline
 	context.beginPath();
-	context.arc(goalData.x, goalData.y, goalData.size, 0, 2 * Math.PI);
+	context.arc(gx, gy, goalSize, 0, 2 * Math.PI);
 	context.strokeStyle = goalOutlineColor;
 	context.lineWidth = 2;
 	context.stroke();
@@ -194,21 +224,23 @@ function drawGoal(goalData) {
 //
 // Draws all players on screen, calls other draw functions
 //
-function drawAllPlayers(playerData) {
+function drawAllPlayers() {
 	var x, y, color;
-	for (var i = 0; i < playerData.length; i++) {
 
+	for (var i = 0; i < players.length; i++) {
 		// Temporary variables for readability
-		x = playerData[i].x;
-		y = playerData[i].y;
-		color = playerData[i].color;
+		x = players[i].x;
+		y = players[i].y;
+		color = players[i].color;
 
 		// If it's not me, make them a little transparent
-		if (name != playerData[i].name)
+		if (name != players[i].name)
 			context.globalAlpha = 0.5;
-		else
+		else {
 			context.globalAlpha = 1.0;
-
+			x = px;
+			y = py;
+		}
 		// Center colored part
 		context.beginPath();
 		context.arc(x, y, playerSize, 0, 2 * Math.PI);
@@ -224,16 +256,14 @@ function drawAllPlayers(playerData) {
 
 		// Player name
 		context.fillStyle = "#000";
-		context.fillText(playerData[i].name, x - 20, y - 20);
+		context.fillText(players[i].name, x - 20, y - 20);
 
 		// Reset opacity
 		context.globalAlpha = 1.0;
 
-		if (!nameList.includes(playerData[i].name))
-			nameList.push(playerData[i].name);
+		if (!nameList.includes(players[i].name))
+			nameList.push(players[i].name);
 
-		drawScoreboard(playerData);
-		drawMessages();
 	}
 }
 
@@ -241,7 +271,7 @@ function drawAllPlayers(playerData) {
 //
 // Draws the player names and scores in the top right
 //
-function drawScoreboard(playerData) {
+function drawScoreboard() {
 
 	context.fillStyle = "#000";
 	context.fillText("Player", 10, 20);
@@ -250,9 +280,9 @@ function drawScoreboard(playerData) {
 
 	var offset = 0;
 
-	for (var i = 0; i < playerData.length; i++) {
-		context.fillText(playerData[i].name, 10, 50 + offset);
-		context.fillText(playerData[i].score, 110, 50 + offset)
+	for (var i = 0; i < players.length; i++) {
+		context.fillText(players[i].name, 10, 50 + offset);
+		context.fillText(players[i].score, 110, 50 + offset)
 		offset += 20;
 	}
 }
@@ -269,10 +299,13 @@ function drawMessages() {
 
 	// Loop through messages, print with different offsets and opacities
 	for (var i = 0; i < messages.length; i++) {
-		context.globalAlpha = messages[i].opacity;
-		context.fillText(messages[i].message, 10, 580 - offset);
-		offset += 20;
-		context.globalAlpha -= 0.3;
+		if (messages[i]) {
+			context.globalAlpha = messages[i].opacity;
+			console.log(messages[i]);
+			context.fillText(messages[i], 10, 580 - offset);
+			offset += 20;
+			context.globalAlpha -= 0.2;
+		} else break;
 	}
 	context.globalAlpha = 1;
 }
@@ -338,10 +371,39 @@ function getRandomColor() {
 }
 
 
+//
+// Resets the goal position and size
+//
+function resetGoal() {
+	gPos = getGoalPosition();
+	gx = gPos[0], gy = gPos[1];
+}
 
 
+// 
+// Set new goal position, min of 200 away from any player
+//
+function getGoalPosition() {
+	// If nobody is playing, don't check based on players
+	if (players.length == 0) return [300, 300];
+	else {
+		var x, y;
+		var good = false;
+		do {
+			for (var i = 0; i < players.length; i++) {
+				x = (Math.random() * (canvas.width - (2 * margin))) + margin;
+				y = (Math.random() * (canvas.height - (2 * margin))) + margin;
+				dist = distance(x, y, players[i].x, players[i].y);
+				if (dist > minGoalDist)
+					good = true;
+				else
+					good = false;
+			}
+		} while (!good);
 
-
+		return [x, y];
+	}
+}
 
 //
 // Calculate distance between to points, (x1, y1) and (x2, y2)
@@ -350,4 +412,12 @@ function distance(x1, y1, x2, y2) {
 	var dist;
 	dist = Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
 	return dist;
+}
+
+
+//
+// Pretty self explanatory
+//
+function clearCanvas() {
+	context.clearRect(0, 0, canvas.width, canvas.height);
 }
