@@ -13,6 +13,8 @@ var scores = [];
 
 io.on('connection', newConnection);
 
+// Variable to not clear the screen every time
+var clearCount = 0;
 
 // Used to not draw goal close to edges
 var margin = 20;
@@ -136,7 +138,12 @@ function updatePlayer(playerData) {
 		//shrinkGoal();
 
 		// Send player and goal data back to clients
-		io.emit('clearCanvas');
+		if (clearCount) {
+			io.emit('clearCanvas');
+			clearCount = 0;
+		} else {
+			clearCount++;
+		}
 		io.emit('goalData', {
 			x: gx,
 			y: gy,
