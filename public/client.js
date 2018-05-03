@@ -27,6 +27,9 @@ socket.on('allPlayerData', drawAllPlayers);
 socket.on('newMessage', function (message) {
 	messages.unshift(message);
 });
+socket.on('clearCanvas', function () {
+	clearCanvas();
+})
 
 // Game-changing variables
 var maxSpeed = 5;
@@ -170,7 +173,6 @@ function clearCanvas() {
 // Draws the goal coin, and checks to see if the player is in it
 //
 function drawGoal(goalData) {
-
 	// Reset opacity just in case
 	context.globalOpacity = 1.0;
 
@@ -193,7 +195,6 @@ function drawGoal(goalData) {
 // Draws all players on screen, calls other draw functions
 //
 function drawAllPlayers(playerData) {
-	clearCanvas(); // removes old frame
 	var x, y, color;
 	for (var i = 0; i < playerData.length; i++) {
 
