@@ -136,12 +136,13 @@ function updatePlayer(playerData) {
 		//shrinkGoal();
 
 		// Send player and goal data back to clients
-		io.emit('allPlayerData', players);
+		io.emit('clearCanvas');
 		io.emit('goalData', {
 			x: gx,
 			y: gy,
 			size: goalSize,
 		});
+		io.emit('allPlayerData', players);
 	}
 }
 
@@ -195,21 +196,6 @@ function getGoalPosition() {
 	}
 }
 
-
-//
-// Shrinks the goal over 5 seconds, then resets it if nobody gets it
-//
-function shrinkGoal() {
-
-	currentTime = performance.now();
-	deltaTime = currentTime - lastTime;
-	//console.log(.0001 * deltaTime.toFixed());
-	lastTime = currentTime;
-	if (goalSize > 0)
-		goalSize -= goalResetTime * .001 * deltaTime.toFixed();
-	else
-		resetGoal();
-}
 
 //
 // Calculate distance between to points, (x1, y1) and (x2, y2)
