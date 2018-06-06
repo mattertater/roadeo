@@ -2,48 +2,58 @@
 <html lang="en">
 
 <head>
-	<title>Roadeo</title>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-	<link rel="stylesheet" href="style.css">
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-	<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+  <title>Roadeo</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, user-scalable=0">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
 </head>
 
 <body>
-	<div id="nameModal" class="modal fade" role="dialog">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<div class="modal-header">
+  <div id="nameModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
 
-					<h4>Roadeo</h4>
+          <h4>Roadeo</h4>
 
-					<div class="input-group mb-9">
-						<input class="form-control" id="username" autocomplete="off" type="text" placeholder="Username" aria-describedby="username-enter">
-						<div class="input-group-append">
-							<button class="btn btn-primary" id="username-enter" type="button" onclick="nameEnter()">Enter</button>
-						</div>
-					</div>
+          <div class="input-group mb-9">
+            <input class="form-control" id="username" autocomplete="off" type="text" placeholder="Username" aria-describedby="username-enter">
+            <div class="input-group-append">
+              <button class="btn btn-primary" id="username-enter" type="button" onclick="nameEnter()">Enter</button>
+            </div>
+          </div>
 
-				</div>
-			</div>
-		</div>
-	</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-	<canvas id='roadeo'></canvas>
+  <canvas id='roadeo'></canvas>
+  <div id='nipple'></div>
 </body>
 
 </html>
 
 <script src="client.js"></script>
-
+<script src="nipplejs.min.js"></script>
 <script>
+
+ if( /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ) {
+   var static = nipplejs.create({ 
+     zone: document.getElementById('nipple'),
+     mode: 'static', 
+     position: { left: '50%', bottom: '50%' },
+   }); 
+ }
+
 	$(window).on('load', function() {
 		$('#nameModal').modal({
 			backdrop: 'static'
 		});
-	})
+	});
 
 </script>
