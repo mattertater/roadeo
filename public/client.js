@@ -8,7 +8,8 @@ var context = canvas.getContext('2d');
 context.font = '1em Helvetica';
 
 // Setting up sockets
-var socket = io.connect(document.location.href);
+//var socket = io.connect(document.location.href);
+var socket = io.connect("localhost:3000");
 
 // Get our ID back from the server
 socket.on('id', function (data) {
@@ -128,7 +129,14 @@ function gameLoop() {
 
 
 	if (name) {
-		movePlayer(); // updates player values 
+		// Check if mobile
+    if(/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+      getNip();
+    }
+    
+		// updates player values 
+		movePlayer(); 
+		
 		// Send player data to server
 		socket.emit('playerData', {
 			id: playerID,
@@ -301,7 +309,6 @@ function drawMessages() {
 	for (var i = 0; i < messages.length; i++) {
 		if (messages[i]) {
 			context.globalAlpha = messages[i].opacity;
-			console.log(messages[i]);
 			context.fillText(messages[i], 10, 580 - offset);
 			offset += 20;
 			context.globalAlpha -= 0.2;
@@ -315,6 +322,7 @@ function drawMessages() {
 // Increments position if a key is pressed, handles multiple keypresses
 // and support WASD as well as arrow keys
 //
+
 function keysPressed(e) {
 	// Only be able to move if there is a name 
 	if (name) {
@@ -346,6 +354,35 @@ function keysPressed(e) {
 				vy += 1;
 		}
 	}
+}
+
+
+//
+// Nipple movement
+//
+function getNip() {
+  manager.on('move dir', function (evt, nip) {
+    
+    var deg = nip.angle.degree;
+    if (nip.force > 1)
+      var mag = 1;
+    else
+      var mag = nip.force;
+    
+    var forceX = mag * Math.cos(deg);
+    var forceY = mag * Math.sin(deg);
+    
+    if (deg > 0 && deg < 180)
+      forceY *= -1;
+    
+    if (deg > 90 && deg < 270)
+      forceX *= -1;
+    
+    if (vx < maxSpeed || (vx * -1) > maxSpeed)
+      vx += forceX;
+    if (vy < maxSpeed || (vx * -1) > maxSpeed)
+      vy += forceY;
+  });
 }
 
 
@@ -412,6 +449,11 @@ function distance(x1, y1, x2, y2) {
 	var dist;
 	dist = Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
 	return dist;
+}
+
+
+function map(val, in_min, in_max, out_min, out_max) {
+  return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 
