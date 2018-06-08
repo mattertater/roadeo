@@ -8,7 +8,8 @@ var context = canvas.getContext('2d');
 context.font = '1em Helvetica';
 
 // Setting up sockets
-var socket = io.connect(document.location.href);
+//var socket = io.connect(document.location.href);
+var socket = io.connect("localhost:3000");
 
 // Get our ID back from the server
 socket.on('id', function (data) {
@@ -72,6 +73,10 @@ var lastTime = 0,
 var fps;
 var frame = 0;
 
+// Nipple variables
+var rad = 0;
+var mag = 0;
+
 //
 // Get player name
 //
@@ -128,7 +133,17 @@ function gameLoop() {
 
 
 	if (name) {
-		movePlayer(); // updates player values 
+		// Check if mobile
+    if(/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+      getNip();
+    }
+    
+    // update player velocity
+    updateVelocities();
+    
+		// updates player values 
+		movePlayer(); 
+		
 		// Send player data to server
 		socket.emit('playerData', {
 			id: playerID,
@@ -144,6 +159,76 @@ function gameLoop() {
 	drawAllPlayers();
 	drawScoreboard();
 	drawMessages();
+}
+
+
+//
+// Nipple movement
+//
+function getNip() {
+  manager.on('move dir', function (evt, nip) {
+    rad = nip.angle.radian;
+    if (nip.force > 1)
+      mag = 1;
+    else
+      mag = nip.force;
+  });
+  
+  manager.on('end', function (evt, nip) {
+    mag = 0;
+  });
+}
+
+
+//
+// New movement update: calculate force based on active joystick / key presses
+//
+function updateVelocities() {
+  if(/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+    var forceX = mag * Math.cos(rad);
+    var forceY = mag * Math.sin(rad);
+    
+    if (forceX > 1)
+      forceX = 1;
+    else if (forceX < -1)
+      forceX = -1;
+    
+    if (forceY > 1)
+      forceY = 1;
+    else if (forceY < -1)
+      forceY = -1;
+    
+    if (vx < maxSpeed && vx > (maxSpeed * -1))
+      vx += forceX;
+    if (vy < maxSpeed && vy > (maxSpeed * -1))
+      vy -= forceY;
+  }
+  else {
+    // ←
+		if (keys[37] || keys[65]) {
+			if (vx > -maxSpeed)
+				vx -= 1;
+		}
+
+		// ↑
+		if (keys[38] || keys[87]) {
+			if (vy > -maxSpeed)
+				vy -= 1;
+		}
+
+		// →
+		if (keys[39] || keys[68]) {
+			if (vx < maxSpeed)
+				vx += 1;
+
+		}
+
+		// ↓
+		if (keys[40] || keys[83]) {
+			if (vy < maxSpeed)
+				vy += 1;
+		}
+  }
 }
 
 
@@ -273,18 +358,28 @@ function drawAllPlayers() {
 //
 function drawScoreboard() {
 
+  // Header
 	context.fillStyle = "#000";
 	context.fillText("Player", 10, 20);
 	context.fillText("Score", 110, 20);
 	context.fillText("- - - - - - - - - - - - - - -", 10, 30);
 
+  // Increments for each player, putting each under the last
 	var offset = 0;
 
+  // Cycle through players, draw name and score
 	for (var i = 0; i < players.length; i++) {
 		context.fillText(players[i].name, 10, 50 + offset);
-		context.fillText(players[i].score, 110, 50 + offset)
+		context.fillText(players[i].score, 110, 50 + offset);
 		offset += 20;
 	}
+  
+  // Debugging stats
+//  context.fillText("vx: " + vx, 200, 20);
+//  context.fillText("vy: " + vy, 200, 40);
+//  
+//  context.fillText("rad: " + rad, 200, 70);
+//  context.fillText("mag: " + mag, 200, 90);
 }
 
 
@@ -301,7 +396,6 @@ function drawMessages() {
 	for (var i = 0; i < messages.length; i++) {
 		if (messages[i]) {
 			context.globalAlpha = messages[i].opacity;
-			console.log(messages[i]);
 			context.fillText(messages[i], 10, 580 - offset);
 			offset += 20;
 			context.globalAlpha -= 0.2;
@@ -315,38 +409,17 @@ function drawMessages() {
 // Increments position if a key is pressed, handles multiple keypresses
 // and support WASD as well as arrow keys
 //
+
 function keysPressed(e) {
 	// Only be able to move if there is a name 
 	if (name) {
 		// Store entry if key is pressed
 		keys[e.keyCode] = true;
-
-		// ←
-		if (keys[37] || keys[65]) {
-			if (vx > -maxSpeed)
-				vx -= 1;
-		}
-
-		// ↑
-		if (keys[38] || keys[87]) {
-			if (vy > -maxSpeed)
-				vy -= 1;
-		}
-
-		// →
-		if (keys[39] || keys[68]) {
-			if (vx < maxSpeed)
-				vx += 1;
-
-		}
-
-		// ↓
-		if (keys[40] || keys[83]) {
-			if (vy < maxSpeed)
-				vy += 1;
-		}
 	}
 }
+
+
+
 
 
 //
