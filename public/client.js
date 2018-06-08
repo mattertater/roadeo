@@ -8,8 +8,8 @@ var context = canvas.getContext('2d');
 context.font = '1em Helvetica';
 
 // Setting up sockets
-//var socket = io.connect(document.location.href);
-var socket = io.connect("localhost:3000");
+var socket = io.connect(document.location.href);
+//var socket = io.connect("localhost:3000");
 
 // Get our ID back from the server
 socket.on('id', function (data) {
