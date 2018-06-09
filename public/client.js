@@ -8,8 +8,8 @@ var context = canvas.getContext('2d');
 context.font = '1em Helvetica';
 
 // Setting up sockets
-var socket = io.connect(document.location.href);
-//var socket = io.connect("localhost:3000");
+//var socket = io.connect(document.location.href);
+var socket = io.connect("localhost:3000");
 
 // Get our ID back from the server
 socket.on('id', function (data) {
@@ -68,10 +68,6 @@ var minGoalDist = 200;
 
 // Data variables
 var keys = [];
-var lastTime = 0,
-	currentTime = 0;
-var fps;
-var frame = 0;
 
 // Nipple variables
 var rad = 0;
@@ -168,10 +164,10 @@ function gameLoop() {
 function getNip() {
   manager.on('move dir', function (evt, nip) {
     rad = nip.angle.radian;
-    if (nip.force > 1)
+    if ((nip.force/8) > 1)
       mag = 1;
     else
-      mag = nip.force;
+      mag = (nip.force/8);
   });
   
   manager.on('end', function (evt, nip) {
@@ -198,10 +194,10 @@ function updateVelocities() {
     else if (forceY < -1)
       forceY = -1;
     
-    if (vx < maxSpeed && vx > (maxSpeed * -1))
+    if (hypot(vx, vy) < maxSpeed){ 
       vx += forceX;
-    if (vy < maxSpeed && vy > (maxSpeed * -1))
       vy -= forceY;
+    }
   }
   else {
     // ←
@@ -487,6 +483,13 @@ function distance(x1, y1, x2, y2) {
 	return dist;
 }
 
+
+//
+// Hypotenuse calculator
+//
+function hypot(w, h) {
+  return Math.sqrt((w * w) + (h * h));
+}
 
 //
 // Pretty self explanatory
